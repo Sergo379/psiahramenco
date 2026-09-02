@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ExamTicketGenerator/ExamTicketGenerator.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ExamTicketGenerator.Tests/ExamTicketGenerator.Tests.csproj" />
+  </Folder>
+</Solution>
