@@ -1,50 +1,47 @@
-# Exam Ticket Generator
+# 🎫 Exam Ticket Generator
 
-Лабораторная работа: генератор экзаменационных билетов.
+> 🧑‍💻 Лабораторная работа №1  
+> 🎓 Генератор экзаменационных билетов  
+> 💻 C# / .NET  
+> 📊 Excel Journal  
+> 🧪 Unit Tests  
+> 🚀 Git + GitHub
 
-## Описание
+---
 
-Консольное приложение на C#, которое запрашивает фамилию и имя студента, генерирует номер экзаменационного билета от 1 до 20 и сохраняет результат в Excel-файл `journal.xlsx`.
+<p align="center">
 
-## Возможности
+![C#](https://img.shields.io/badge/C%23-.NET-blueviolet?style=for-the-badge&logo=csharp)
+![.NET](https://img.shields.io/badge/.NET-10.0-512BD4?style=for-the-badge&logo=dotnet)
+![Tests](https://img.shields.io/badge/Tests-3%20passed-success?style=for-the-badge)
+![Git](https://img.shields.io/badge/Git-version%20controlled-orange?style=for-the-badge&logo=git)
+![GitHub](https://img.shields.io/badge/GitHub-repository-black?style=for-the-badge&logo=github)
 
-- ввод фамилии и имени студента;
-- выход из программы по клавише ESC;
-- проверка пустого ввода;
-- удаление пробелов по краям строки;
-- генерация номера билета от 1 до 20;
-- автоматическое создание `journal.xlsx`;
-- добавление новых записей без удаления существующих;
-- сохранение после каждого студента;
-- сохранение даты и времени;
-- обработка ситуации, когда Excel-файл заблокирован;
-- модульные тесты.
+</p>
 
-## Использованные технологии
+---
 
-- C#
-- .NET 10
-- ClosedXML
-- xUnit
-- Git
-- GitHub
+## 🧠 Что это вообще такое?
 
-## Запуск
+Это консольное приложение для генерации экзаменационных билетов.
 
-```powershell
-dotnet restore
-dotnet run --project src/ExamTicketGenerator
-```
+Пользователь вводит:
 
-## Запуск тестов
+- 👤 фамилию;
+- 👤 имя.
 
-```powershell
-dotnet test
-```
+Программа:
 
-## Формат журнала
+1. 🎲 случайным образом выбирает экзаменационный билет;
+2. 🖥️ показывает его в консоли;
+3. 📊 сохраняет результат в `journal.xlsx`;
+4. 💾 сразу записывает данные на диск;
+5. 🔁 позволяет продолжать работу со следующим студентом;
+6. 🛑 завершает работу при нажатии `ESC`.
 
-| Last name | First name | Номер билета | Дата и время |
-|---|---|---|---|
+Короче:
 
-Файл `journal.xlsx` создаётся автоматически при первой записи.
+```text
+Студент → ввод имени → 🎲 билет → 📊 Excel → следующий студент
+                                      ↓
+                                   💾 SAVE
