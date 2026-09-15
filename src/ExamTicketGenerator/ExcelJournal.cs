@@ -1,82 +1,34 @@
+using System;
+using System.IO;
 using ClosedXML.Excel;
-
 namespace ExamTicketGenerator;
-
-public sealed class ExcelJournal
+public sealed class JournalFileAccessException(string message, Exception inner) : Exception(message, inner);
+public sealed class ExcelJournal(string filePath)
 {
-    private readonly string _filePath;
-
-    public ExcelJournal(string filePath)
+    private static readonly string[] Headers = ["Группа", "Фамилия", "Имя", "Номер билета", "Дата и время", "Повтор"];
+    public JournalEntry? FindFirst(string group, string lastName, string firstName)
     {
-        _filePath = filePath;
+        if (!File.Exists(filePath)) return null;
+        using var workbook = new XLWorkbook(filePath); var sheet = workbook.Worksheets.First();
+        var lastRow = sheet.LastRowUsed()?.RowNumber() ?? 1;
+        for (var row = 2; row <= lastRow; row++)
+            if (sheet.Cell(row, 1).GetString() == group && sheet.Cell(row, 2).GetString() == lastName && sheet.Cell(row, 3).GetString() == firstName)
+                return new JournalEntry(group, lastName, firstName, sheet.Cell(row, 4).GetValue<int>(), sheet.Cell(row, 5).GetDateTime(), sheet.Cell(row, 6).GetString() == "да");
+        return null;
     }
-
-    public void Append(
-        string lastName,
-        string firstName,
-        int ticketNumber,
-        DateTime dateTime)
+    public void Append(JournalEntry entry)
     {
-        while (true)
+        try
         {
-            try
-            {
-                using var workbook = File.Exists(_filePath)
-                    ? new XLWorkbook(_filePath)
-                    : CreateWorkbook();
-
-                var worksheet = workbook.Worksheet("Journal");
-
-                var lastRow = worksheet.LastRowUsed()?.RowNumber() ?? 1;
-                var newRow = lastRow + 1;
-
-                worksheet.Cell(newRow, 1).Value = lastName;
-                worksheet.Cell(newRow, 2).Value = firstName;
-                worksheet.Cell(newRow, 3).Value = ticketNumber;
-                worksheet.Cell(newRow, 4).Value = dateTime;
-
-                worksheet.Cell(newRow, 4)
-                    .Style.DateFormat.Format = "dd.MM.yyyy HH:mm:ss";
-
-                worksheet.Columns(1, 4).AdjustToContents();
-
-                workbook.SaveAs(_filePath);
-
-                return;
-            }
-            catch (IOException)
-            {
-                ShowFileError();
-            }
-            catch (UnauthorizedAccessException)
-            {
-                ShowFileError();
-            }
+            using var workbook = File.Exists(filePath) ? new XLWorkbook(filePath) : new XLWorkbook();
+            var sheet = workbook.Worksheets.FirstOrDefault() ?? workbook.AddWorksheet("Результаты");
+            if (sheet.Cell(1, 1).IsEmpty()) for (var col = 0; col < Headers.Length; col++) sheet.Cell(1, col + 1).Value = Headers[col];
+            var row = (sheet.LastRowUsed()?.RowNumber() ?? 1) + 1;
+            sheet.Cell(row, 1).Value = entry.Group; sheet.Cell(row, 2).Value = entry.LastName; sheet.Cell(row, 3).Value = entry.FirstName; sheet.Cell(row, 4).Value = entry.TicketNumber;
+            sheet.Cell(row, 5).Value = entry.DateTime; sheet.Cell(row, 5).Style.DateFormat.Format = "dd.MM.yyyy HH:mm:ss"; sheet.Cell(row, 6).Value = entry.IsRepeat ? "да" : "нет";
+            sheet.Row(1).Style.Font.Bold = true; sheet.Columns(1, 6).AdjustToContents(); workbook.SaveAs(filePath);
         }
-    }
-
-    private static XLWorkbook CreateWorkbook()
-    {
-        var workbook = new XLWorkbook();
-        var worksheet = workbook.AddWorksheet("Journal");
-
-        worksheet.Cell(1, 1).Value = "Last name";
-        worksheet.Cell(1, 2).Value = "First name";
-        worksheet.Cell(1, 3).Value = "Номер билета";
-        worksheet.Cell(1, 4).Value = "Дата и время";
-
-        worksheet.Range(1, 1, 1, 4).Style.Font.Bold = true;
-
-        return workbook;
-    }
-
-    private static void ShowFileError()
-    {
-        Console.WriteLine();
-        Console.WriteLine("Не удалось записать данные в journal.xlsx.");
-        Console.WriteLine("Возможно, файл открыт в Excel.");
-        Console.WriteLine("Закройте journal.xlsx и нажмите Enter для повторной попытки.");
-
-        Console.ReadLine();
+        catch (IOException ex) { throw new JournalFileAccessException("Файл результатов занят или недоступен для записи.", ex); }
+        catch (UnauthorizedAccessException ex) { throw new JournalFileAccessException("Нет доступа к файлу результатов.", ex); }
     }
 }

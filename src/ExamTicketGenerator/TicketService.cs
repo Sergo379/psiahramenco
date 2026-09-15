@@ -1,9 +1,11 @@
 namespace ExamTicketGenerator;
-
-public static class TicketService
+public sealed class TicketService(IReadOnlyList<Ticket> tickets)
 {
-    public static int GenerateTicketNumber()
+    public int ChooseTicketNumber(string group, Student student, ExcelJournal journal, out bool repeat)
     {
-        return Random.Shared.Next(1, 21);
+        var existing = journal.FindFirst(group, student.LastName, student.FirstName);
+        repeat = existing is not null;
+        return existing?.TicketNumber ?? tickets[Random.Shared.Next(tickets.Count)].Number;
     }
+    public Ticket GetTicket(int number) => tickets.First(ticket => ticket.Number == number);
 }
