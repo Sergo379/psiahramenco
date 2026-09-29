@@ -7,6 +7,9 @@
   <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <AssemblyName>TicketStudio</AssemblyName>
+    <Version>2.0.0</Version>
+    <Description>LOFT Ticket Studio — генератор экзаменационных билетов</Description>
   </PropertyGroup>
 
   <ItemGroup>

@@ -36,19 +36,42 @@ public static class TicketsReader
     {
         var parsed = new List<(int Number, List<string> Questions)>();
         using var document = WordprocessingDocument.Open(path, false);
-        foreach (var paragraph in document.MainDocumentPart?.Document.Body?.Elements<Paragraph>() ?? [])
+        var active = false;
+        foreach (var paragraph in document.MainDocumentPart?.Document.Body?.Descendants<Paragraph>() ?? [])
         {
             var text = paragraph.InnerText.Trim();
             var header = Header.Match(text);
-            if (header.Success) { parsed.Add((int.Parse(header.Groups[1].Value), [])); continue; }
+            if (header.Success && int.TryParse(header.Groups[1].Value, out var number) && number > 0)
+            {
+                parsed.Add((number, []));
+                active = true;
+                continue;
+            }
+            if (text.StartsWith("Билет", StringComparison.OrdinalIgnoreCase))
+            {
+                active = false;
+                log?.Invoke($"Нераспознанный заголовок: {text}. Билет пропущен.");
+                continue;
+            }
             var question = Question.Match(text);
-            if (question.Success && parsed.Count > 0) parsed[^1].Questions.Add(question.Groups[2].Value);
-            else if (!string.IsNullOrWhiteSpace(text)) log?.Invoke($"Пропущен нераспознанный абзац: {text}");
+            if (question.Success && active) parsed[^1].Questions.Add(question.Groups[2].Value);
+            else if (active && paragraph.ParagraphProperties?.NumberingProperties is not null && !string.IsNullOrWhiteSpace(text))
+                parsed[^1].Questions.Add(text);
+            else if (!string.IsNullOrWhiteSpace(text))
+            {
+                active = false;
+                log?.Invoke($"Пропущен нераспознанный абзац: {text}");
+            }
         }
         var result = new List<Ticket>();
         foreach (var item in parsed)
         {
             if (item.Number <= 0 || item.Questions.Count < 3) { log?.Invoke($"Билет № {item.Number} пропущен: найдено вопросов {item.Questions.Count}, требуется минимум 3."); continue; }
+            if (result.Any(ticket => ticket.Number == item.Number))
+            {
+                log?.Invoke($"Билет № {item.Number} пропущен: повторный заголовок.");
+                continue;
+            }
             result.Add(new Ticket(item.Number, item.Questions.Take(3).ToArray()));
         }
         return result;
