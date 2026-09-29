@@ -1,0 +1,17 @@
+<Window x:Class="ExamTicketGenerator.TicketWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Ваш экзаменационный билет" Width="710" Height="700" MinWidth="620" MinHeight="500" WindowStartupLocation="CenterOwner" PreviewKeyDown="KeyPressed">
+<Grid Margin="32" Background="#191A18" TextOptions.TextRenderingMode="Grayscale">
+    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+    <StackPanel Margin="0,0,0,25">
+        <Grid><TextBlock Text="LOFT / STUDIO" FontSize="11" Foreground="#BBAE95"/><Border Background="#2B3225" CornerRadius="12" Padding="11,5" HorizontalAlignment="Right"><TextBlock Text="✓  Сохранено в журнал" Foreground="#C1D5AA" FontSize="11"/></Border></Grid>
+        <TextBlock x:Name="NumberText" FontSize="48" FontFamily="Georgia" Foreground="#EDAF70" Margin="0,26,0,12"/>
+        <TextBlock x:Name="StudentText" FontSize="17"/>
+        <TextBlock x:Name="RepeatText" Foreground="#A9A99B" FontSize="12" Margin="0,7,0,0"/>
+    </StackPanel>
+    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+        <ItemsControl x:Name="QuestionsList">
+            <ItemsControl.ItemTemplate><DataTemplate><Border Background="#292A25" BorderBrush="#45453B" BorderThickness="1" CornerRadius="10" Padding="20" Margin="0,0,0,12"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="42"/><ColumnDefinition/></Grid.ColumnDefinitions><TextBlock Text="{Binding Index}" Foreground="#EDAF70" FontFamily="Georgia" FontSize="24"/><StackPanel Grid.Column="1"><TextBlock Text="ВОПРОС" FontSize="9" Foreground="#959687"/><TextBlock Text="{Binding Text}" TextWrapping="Wrap" FontSize="16" LineHeight="25" Margin="0,7,0,0"/></StackPanel></Grid></Border></DataTemplate></ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </ScrollViewer>
+    <Grid Grid.Row="2" Margin="0,22,0,0"><TextBlock Text="ESC — вернуться к выбору" Foreground="#929487" VerticalAlignment="Center" FontSize="12"/><Button Content="Следующий студент   →" Click="CloseClicked" HorizontalAlignment="Right"/></Grid>
+</Grid>
+</Window>

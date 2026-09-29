@@ -1,82 +1,92 @@
+using System.IO;
 using ClosedXML.Excel;
 
 namespace ExamTicketGenerator;
 
-public sealed class ExcelJournal
+public sealed class JournalFileAccessException(string message, Exception inner) : Exception(message, inner);
+
+public sealed class ExcelJournal(string filePath)
 {
-    private readonly string _filePath;
+    private static readonly string[] Headers = ["Группа", "Фамилия", "Имя", "Номер билета", "Дата и время", "Повтор"];
 
-    public ExcelJournal(string filePath)
+    public void EnsureCreated()
     {
-        _filePath = filePath;
+        if (File.Exists(filePath)) return;
+        using var workbook = new XLWorkbook();
+        CreateSheet(workbook);
+        Save(workbook);
     }
 
-    public void Append(
-        string lastName,
-        string firstName,
-        int ticketNumber,
-        DateTime dateTime)
+    public JournalEntry? FindFirst(string group, string lastName, string firstName)
     {
-        while (true)
+        if (!File.Exists(filePath)) return null;
+        using var workbook = new XLWorkbook(filePath);
+        var sheet = GetSheet(workbook);
+        var lastRow = sheet.LastRowUsed()?.RowNumber() ?? 1;
+        for (var row = 2; row <= lastRow; row++)
         {
-            try
-            {
-                using var workbook = File.Exists(_filePath)
-                    ? new XLWorkbook(_filePath)
-                    : CreateWorkbook();
-
-                var worksheet = workbook.Worksheet("Journal");
-
-                var lastRow = worksheet.LastRowUsed()?.RowNumber() ?? 1;
-                var newRow = lastRow + 1;
-
-                worksheet.Cell(newRow, 1).Value = lastName;
-                worksheet.Cell(newRow, 2).Value = firstName;
-                worksheet.Cell(newRow, 3).Value = ticketNumber;
-                worksheet.Cell(newRow, 4).Value = dateTime;
-
-                worksheet.Cell(newRow, 4)
-                    .Style.DateFormat.Format = "dd.MM.yyyy HH:mm:ss";
-
-                worksheet.Columns(1, 4).AdjustToContents();
-
-                workbook.SaveAs(_filePath);
-
-                return;
-            }
-            catch (IOException)
-            {
-                ShowFileError();
-            }
-            catch (UnauthorizedAccessException)
-            {
-                ShowFileError();
-            }
+            if (sheet.Cell(row, 1).GetString() == group && sheet.Cell(row, 2).GetString() == lastName && sheet.Cell(row, 3).GetString() == firstName)
+                return new JournalEntry(group, lastName, firstName, sheet.Cell(row, 4).GetValue<int>(),
+                    sheet.Cell(row, 5).GetDateTime(), sheet.Cell(row, 6).GetString() == "да");
         }
+        return null;
     }
 
-    private static XLWorkbook CreateWorkbook()
+    public void Append(JournalEntry entry)
     {
-        var workbook = new XLWorkbook();
-        var worksheet = workbook.AddWorksheet("Journal");
-
-        worksheet.Cell(1, 1).Value = "Last name";
-        worksheet.Cell(1, 2).Value = "First name";
-        worksheet.Cell(1, 3).Value = "Номер билета";
-        worksheet.Cell(1, 4).Value = "Дата и время";
-
-        worksheet.Range(1, 1, 1, 4).Style.Font.Bold = true;
-
-        return workbook;
+        try
+        {
+            using var workbook = File.Exists(filePath) ? new XLWorkbook(filePath) : new XLWorkbook();
+            var sheet = workbook.Worksheets.Any() ? GetSheet(workbook) : CreateSheet(workbook);
+            var row = (sheet.LastRowUsed()?.RowNumber() ?? 1) + 1;
+            sheet.Cell(row, 1).Value = entry.Group;
+            sheet.Cell(row, 2).Value = entry.LastName;
+            sheet.Cell(row, 3).Value = entry.FirstName;
+            sheet.Cell(row, 4).Value = entry.TicketNumber;
+            sheet.Cell(row, 5).Value = entry.DateTime;
+            sheet.Cell(row, 5).Style.DateFormat.Format = "dd.MM.yyyy HH:mm:ss";
+            sheet.Cell(row, 6).Value = entry.IsRepeat ? "да" : "нет";
+            Save(workbook);
+        }
+        catch (IOException ex) { throw new JournalFileAccessException("Журнал занят или недоступен для записи.", ex); }
+        catch (UnauthorizedAccessException ex) { throw new JournalFileAccessException("Нет доступа к папке журнала.", ex); }
     }
 
-    private static void ShowFileError()
+    private static IXLWorksheet GetSheet(XLWorkbook workbook)
     {
-        Console.WriteLine();
-        Console.WriteLine("Не удалось записать данные в journal.xlsx.");
-        Console.WriteLine("Возможно, файл открыт в Excel.");
-        Console.WriteLine("Закройте journal.xlsx и нажмите Enter для повторной попытки.");
+        var sheet = workbook.Worksheets.FirstOrDefault() ?? throw new InvalidDataException("Журнал не содержит листов.");
+        for (var column = 1; column <= Headers.Length; column++)
+            if (sheet.Cell(1, column).GetString() != Headers[column - 1])
+                throw new InvalidDataException("Неверный формат results.xlsx. Требуются колонки: " + string.Join(", ", Headers));
+        return sheet;
+    }
 
-        Console.ReadLine();
+    private static IXLWorksheet CreateSheet(XLWorkbook workbook)
+    {
+        var sheet = workbook.AddWorksheet("Результаты");
+        for (var col = 0; col < Headers.Length; col++) sheet.Cell(1, col + 1).Value = Headers[col];
+        sheet.Row(1).Style.Font.Bold = true;
+        sheet.Row(1).Style.Fill.BackgroundColor = XLColor.FromHtml("#E5C39D");
+        sheet.SheetView.FreezeRows(1);
+        sheet.Columns(1, 3).Width = 24;
+        sheet.Column(4).Width = 18;
+        sheet.Column(5).Width = 24;
+        sheet.Column(6).Width = 14;
+        return sheet;
+    }
+
+    private void Save(XLWorkbook workbook)
+    {
+        var temporary = filePath + "." + Guid.NewGuid().ToString("N") + ".tmp.xlsx";
+        try
+        {
+            // Verify an exclusive write is possible before preparing the replacement.
+            if (File.Exists(filePath))
+                using (var access = new FileStream(filePath, FileMode.Open, FileAccess.ReadWrite, FileShare.None)) { }
+            workbook.SaveAs(temporary);
+            // Replace only after the new workbook is fully serialized; never truncate the original.
+            File.Move(temporary, filePath, true);
+        }
+        finally { if (File.Exists(temporary)) File.Delete(temporary); }
     }
 }

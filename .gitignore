@@ -484,3 +484,8 @@ $RECYCLE.BIN/
 # Generated journal
 journal.xlsx
 ~$journal.xlsx
+results.xlsx
+~$*.xlsx
+tickets-parser.log
+dist/
+!src/ExamTicketGenerator/Properties/PublishProfiles/Portable.pubxml
